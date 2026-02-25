@@ -9,7 +9,8 @@
 
 - JDK 17+
 - Maven 3.9+
-- 本机已安装 `groovy` 命令并配置到 PATH
+
+> 不依赖本机 `groovy` 命令。项目通过 Maven 引入 `org.codehaus.groovy:groovy`，在 JVM 内直接执行脚本。
 
 ## 启动
 
@@ -46,7 +47,7 @@ mvn spring-boot:run
 
 ## 实现说明
 
-- 服务端通过 `groovy <temp_script>.groovy ...args` 执行脚本。
-- 执行前会检查 `groovy --version`，缺失时返回 400。
+- 服务端使用 `GroovyShell` 执行脚本，而不是启动外部进程。
+- `args` 以 `String[]` 形式注入脚本上下文，脚本中可直接使用 `args`。
 - 默认超时 10 秒，可设置范围 `1~120` 秒。
-- 脚本以临时文件执行，完成后自动删除。
+- 超时后会取消执行任务并返回 `timedOut=true`。

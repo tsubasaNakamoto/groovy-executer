@@ -1,76 +1,61 @@
 package com.example.groovyexecuter;
 
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
+import org.codehaus.groovy.control.CompilerConfiguration;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @Service
 public class GroovyExecutionService {
     public ExecuteResponse execute(String script, List<String> args, int timeoutSeconds) {
-        ensureGroovyAvailable();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<ExecuteResponse> future = executor.submit(() -> runScript(script, args));
 
-        Path tempScript = null;
         try {
-            tempScript = Files.createTempFile("groovy-script-", ".groovy");
-            Files.writeString(tempScript, script, StandardCharsets.UTF_8);
-
-            List<String> command = new ArrayList<>();
-            command.add("groovy");
-            command.add(tempScript.toString());
-            command.addAll(args);
-
-            ProcessBuilder processBuilder = new ProcessBuilder(command);
-            Process process = processBuilder.start();
-
-            boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                String partialOut = readStream(process.getInputStream());
-                String partialErr = readStream(process.getErrorStream());
-                return new ExecuteResponse(-1, partialOut, partialErr + "\n执行超时（>" + timeoutSeconds + "s）", true);
+            return future.get(timeoutSeconds, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            return new ExecuteResponse(-1, "", "\n执行超时（>" + timeoutSeconds + "s）", true);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof GroovyExecutionException ge) {
+                throw ge;
             }
-
-            String stdout = readStream(process.getInputStream());
-            String stderr = readStream(process.getErrorStream());
-            int exitCode = process.exitValue();
-            return new ExecuteResponse(exitCode, stdout, stderr, false);
-        } catch (IOException e) {
-            throw new GroovyExecutionException("执行 Groovy 脚本失败。", e);
+            throw new GroovyExecutionException("执行 Groovy 脚本失败。", cause);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new GroovyExecutionException("执行被中断。", e);
         } finally {
-            if (tempScript != null) {
-                try {
-                    Files.deleteIfExists(tempScript);
-                } catch (IOException ignored) {
-                }
-            }
+            executor.shutdownNow();
         }
     }
 
-    private void ensureGroovyAvailable() {
+    private ExecuteResponse runScript(String script, List<String> args) {
+        StringWriter stdoutWriter = new StringWriter();
+        StringWriter stderrWriter = new StringWriter();
+
+        Binding binding = new Binding();
+        binding.setVariable("args", args.toArray(String[]::new));
+        binding.setVariable("out", new PrintWriter(stdoutWriter, true));
+        binding.setVariable("err", new PrintWriter(stderrWriter, true));
+
+        CompilerConfiguration config = new CompilerConfiguration();
+        GroovyShell shell = new GroovyShell(binding, config);
+
         try {
-            Process process = new ProcessBuilder("groovy", "--version").start();
-            if (!process.waitFor(3, TimeUnit.SECONDS)) {
-                process.destroyForcibly();
-                throw new GroovyExecutionException("未检测到可用的 groovy 命令，请安装 Groovy 并配置 PATH。");
+            shell.evaluate(script);
+            return new ExecuteResponse(0, stdoutWriter.toString(), stderrWriter.toString(), false);
+        } catch (Exception e) {
+            String message = e.getMessage() == null ? e.getClass().getName() : e.getMessage();
+            if (!stderrWriter.toString().isBlank()) {
+                message = stderrWriter + "\n" + message;
             }
-        } catch (IOException | InterruptedException e) {
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
-            }
-            throw new GroovyExecutionException("未检测到可用的 groovy 命令，请安装 Groovy 并配置 PATH。", e);
+            return new ExecuteResponse(1, stdoutWriter.toString(), message, false);
         }
-    }
-
-    private String readStream(java.io.InputStream inputStream) throws IOException {
-        return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
     }
 }
