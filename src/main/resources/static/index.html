@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Groovy 执行平台（Java）</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f7f8fa; color: #222; }
+        .container { max-width: 960px; margin: 32px auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.08); padding: 24px; }
+        textarea, input, button { width: 100%; box-sizing: border-box; }
+        textarea, input { border: 1px solid #d0d5dd; border-radius: 8px; padding: 10px; font-size: 14px; }
+        textarea { min-height: 220px; font-family: Consolas, monospace; }
+        label { display: block; font-weight: 600; margin: 16px 0 8px; }
+        button { margin-top: 20px; border: none; background: #155eef; color: #fff; padding: 12px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+        pre { background: #111827; color: #e5e7eb; padding: 16px; border-radius: 8px; overflow: auto; }
+        .meta { margin-top: 12px; padding: 10px; background: #eff8ff; border: 1px solid #b2ddff; border-radius: 8px; }
+        .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Groovy 执行平台（Java 后端）</h1>
+    <p>输入 Groovy 脚本和参数，返回执行结果。</p>
+
+    <label for="script">Groovy 脚本</label>
+    <textarea id="script">println "Hello, ${args ? args.join(', ') : 'World'}"</textarea>
+
+    <label for="args">执行参数（空格分隔）</label>
+    <input id="args" value="Alice Bob" />
+
+    <label for="timeout">超时时间（秒）</label>
+    <input id="timeout" type="number" min="1" max="120" value="10" />
+
+    <button id="run">执行脚本</button>
+
+    <div id="meta" class="meta" style="display:none;"></div>
+    <div class="result-grid">
+        <div>
+            <h3>stdout</h3>
+            <pre id="stdout"></pre>
+        </div>
+        <div>
+            <h3>stderr</h3>
+            <pre id="stderr"></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    const runBtn = document.getElementById('run');
+    const stdoutEl = document.getElementById('stdout');
+    const stderrEl = document.getElementById('stderr');
+    const metaEl = document.getElementById('meta');
+
+    runBtn.addEventListener('click', async () => {
+        runBtn.disabled = true;
+        stdoutEl.textContent = '执行中...';
+        stderrEl.textContent = '';
+        metaEl.style.display = 'none';
+
+        const script = document.getElementById('script').value;
+        const argText = document.getElementById('args').value.trim();
+        const timeout = Number(document.getElementById('timeout').value || 10);
+
+        try {
+            const response = await fetch('/api/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    script,
+                    args: argText ? argText.split(/\s+/) : [],
+                    timeoutSeconds: timeout
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || '执行失败');
+            }
+
+            metaEl.style.display = 'block';
+            metaEl.textContent = `exitCode=${data.exitCode}, timedOut=${data.timedOut}`;
+            stdoutEl.textContent = data.stdout || '(empty)';
+            stderrEl.textContent = data.stderr || '(empty)';
+        } catch (error) {
+            stdoutEl.textContent = '';
+            stderrEl.textContent = error.message;
+        } finally {
+            runBtn.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>
