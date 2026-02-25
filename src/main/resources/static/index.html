@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Groovy 执行平台（Java + MyBatis + MySQL）</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f7f8fa; color: #222; }
+        .container { max-width: 1100px; margin: 24px auto; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+        .grid { display: grid; grid-template-columns: 320px 1fr; gap: 16px; }
+        .panel { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }
+        textarea, input, button { width: 100%; box-sizing: border-box; }
+        textarea, input { border: 1px solid #d0d5dd; border-radius: 8px; padding: 10px; font-size: 14px; }
+        textarea { min-height: 200px; font-family: Consolas, monospace; }
+        label { display: block; font-weight: 600; margin: 10px 0 6px; }
+        button { margin-top: 8px; border: none; background: #155eef; color: #fff; padding: 10px; border-radius: 8px; cursor: pointer; }
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .danger { background: #d92d20; }
+        .secondary { background: #667085; }
+        pre { background: #111827; color: #e5e7eb; padding: 12px; border-radius: 8px; min-height: 60px; }
+        ul { list-style: none; padding-left: 0; margin: 0; }
+        li { padding: 8px; border-radius: 8px; cursor: pointer; }
+        li:hover { background: #f2f4f7; }
+        li.active { background: #dbeafe; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Groovy 脚本平台（脚本 CRUD + 执行）</h2>
+    <div class="grid">
+        <div class="panel">
+            <h3>脚本列表</h3>
+            <button class="secondary" onclick="loadScripts()">刷新</button>
+            <ul id="scriptList"></ul>
+        </div>
+
+        <div class="panel">
+            <label>脚本ID（编辑/删除/执行时使用）</label>
+            <input id="scriptId" placeholder="例如 1" />
+
+            <label>名称</label>
+            <input id="name" />
+
+            <label>描述</label>
+            <input id="description" />
+
+            <label>Groovy 脚本内容</label>
+            <textarea id="content">println "Hello, ${args.join(', ')}"</textarea>
+
+            <div class="btn-row">
+                <button onclick="createScript()">新增</button>
+                <button onclick="updateScript()">更新</button>
+            </div>
+            <button class="danger" onclick="deleteScript()">删除</button>
+
+            <label>执行参数（空格分隔）</label>
+            <input id="args" value="Alice Bob" />
+            <label>超时（秒）</label>
+            <input id="timeout" type="number" value="10" min="1" max="120" />
+            <div class="btn-row">
+                <button onclick="executeContent()">执行当前内容</button>
+                <button class="secondary" onclick="executeById()">按ID执行</button>
+            </div>
+
+            <h4>stdout</h4>
+            <pre id="stdout"></pre>
+            <h4>stderr</h4>
+            <pre id="stderr"></pre>
+            <h4>meta</h4>
+            <pre id="meta"></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentId = null;
+
+function getArgs() {
+    const text = document.getElementById('args').value.trim();
+    return text ? text.split(/\s+/) : [];
+}
+
+async function loadScripts() {
+    const res = await fetch('/api/scripts');
+    const data = await res.json();
+    const list = document.getElementById('scriptList');
+    list.innerHTML = '';
+    for (const item of data) {
+        const li = document.createElement('li');
+        li.textContent = `#${item.id} ${item.name}`;
+        li.onclick = () => fillForm(item);
+        if (currentId === item.id) li.classList.add('active');
+        list.appendChild(li);
+    }
+}
+
+function fillForm(item) {
+    currentId = item.id;
+    document.getElementById('scriptId').value = item.id;
+    document.getElementById('name').value = item.name || '';
+    document.getElementById('description').value = item.description || '';
+    document.getElementById('content').value = item.content || '';
+    loadScripts();
+}
+
+async function createScript() {
+    await fetch('/api/scripts', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: document.getElementById('name').value,
+            description: document.getElementById('description').value,
+            content: document.getElementById('content').value,
+        })
+    });
+    await loadScripts();
+}
+
+async function updateScript() {
+    const id = document.getElementById('scriptId').value;
+    await fetch(`/api/scripts/${id}`, {
+        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: document.getElementById('name').value,
+            description: document.getElementById('description').value,
+            content: document.getElementById('content').value,
+        })
+    });
+    await loadScripts();
+}
+
+async function deleteScript() {
+    const id = document.getElementById('scriptId').value;
+    await fetch(`/api/scripts/${id}`, { method: 'DELETE' });
+    currentId = null;
+    await loadScripts();
+}
+
+function showResult(data) {
+    document.getElementById('stdout').textContent = data.stdout || '(empty)';
+    document.getElementById('stderr').textContent = data.stderr || '(empty)';
+    document.getElementById('meta').textContent = `exitCode=${data.exitCode}, timedOut=${data.timedOut}`;
+}
+
+async function executeContent() {
+    const res = await fetch('/api/execute', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            script: document.getElementById('content').value,
+            args: getArgs(),
+            timeoutSeconds: Number(document.getElementById('timeout').value || 10),
+        })
+    });
+    showResult(await res.json());
+}
+
+async function executeById() {
+    const id = document.getElementById('scriptId').value;
+    const res = await fetch(`/api/scripts/${id}/execute`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            args: getArgs(),
+            timeoutSeconds: Number(document.getElementById('timeout').value || 10),
+        })
+    });
+    showResult(await res.json());
+}
+
+loadScripts();
+</script>
+</body>
+</html>
