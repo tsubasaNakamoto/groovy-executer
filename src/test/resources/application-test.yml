@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:groovy_executer;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
