@@ -31,6 +31,10 @@ mvn spring-boot:run
 - `POST /api/execute`：执行请求体中的脚本内容。
 - `POST /api/scripts/{id}/execute`：按已保存脚本 ID 执行。
 
+### 参数上下文教程
+
+- `docs/args-context-tutorial.md`：`argsContext` 的使用说明、变量清单和脚本示例。
+
 ### 脚本 CRUD（MyBatis SQL 实现）
 
 - `GET /api/scripts`：脚本列表

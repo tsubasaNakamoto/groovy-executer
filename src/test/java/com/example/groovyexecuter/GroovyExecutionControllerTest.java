@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -26,7 +27,7 @@ class GroovyExecutionControllerTest {
 
     @Test
     void executeShouldReturnResult() throws Exception {
-        when(groovyExecutionService.execute(eq("println 1"), eq(List.of("A")), eq(10)))
+        when(groovyExecutionService.execute(eq("println 1"), eq(List.of("A")), eq(10), any()))
                 .thenReturn(new ExecuteResponse(0, "1\n", "", false));
 
         mockMvc.perform(post("/api/execute")

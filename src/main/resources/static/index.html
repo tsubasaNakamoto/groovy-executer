@@ -3,136 +3,711 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Groovy 执行平台（Java + MyBatis + MySQL）</title>
+    <title>Groovy 脚本平台</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; background: #f7f8fa; color: #222; }
-        .container { max-width: 1100px; margin: 24px auto; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,.08); }
-        .grid { display: grid; grid-template-columns: 320px 1fr; gap: 16px; }
-        .panel { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }
-        textarea, input, button { width: 100%; box-sizing: border-box; }
-        textarea, input { border: 1px solid #d0d5dd; border-radius: 8px; padding: 10px; font-size: 14px; }
-        textarea { min-height: 200px; font-family: Consolas, monospace; }
-        label { display: block; font-weight: 600; margin: 10px 0 6px; }
-        button { margin-top: 8px; border: none; background: #155eef; color: #fff; padding: 10px; border-radius: 8px; cursor: pointer; }
-        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .danger { background: #d92d20; }
-        .secondary { background: #667085; }
-        pre { background: #111827; color: #e5e7eb; padding: 12px; border-radius: 8px; min-height: 60px; }
-        ul { list-style: none; padding-left: 0; margin: 0; }
-        li { padding: 8px; border-radius: 8px; cursor: pointer; }
-        li:hover { background: #f2f4f7; }
-        li.active { background: #dbeafe; }
+        :root {
+            --bg: linear-gradient(135deg, #f5f7ff 0%, #eef7f3 48%, #fff8f0 100%);
+            --card: rgba(255, 255, 255, 0.92);
+            --line: #d8e0ef;
+            --text: #1a2233;
+            --subtle: #5c667d;
+            --accent: #0f766e;
+            --accent-2: #155eef;
+            --ok: #0b7a44;
+            --warn: #8b5a00;
+            --code-bg: #0f172a;
+            --code-line: #17223a;
+            --code-text: #dbe8ff;
+            --mono: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            --sans: "Avenir Next", "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+            --radius: 16px;
+            --shadow: 0 18px 48px rgba(20, 40, 90, 0.12);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: var(--sans);
+            color: var(--text);
+            background: var(--bg);
+            min-height: 100vh;
+        }
+
+        .shell {
+            max-width: 1220px;
+            margin: 24px auto;
+            padding: 0 16px 20px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+            animation: slide-in 420ms ease;
+        }
+
+        .title {
+            margin: 0;
+            letter-spacing: 0.02em;
+            font-size: 30px;
+            font-weight: 760;
+        }
+
+        .subtitle {
+            margin: 6px 0 0;
+            color: var(--subtle);
+            font-size: 14px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 14px;
+        }
+
+        .panel {
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: var(--card);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(8px);
+        }
+
+        .panel-hd {
+            padding: 12px 14px 8px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .panel-hd h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .icon-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 999px;
+            border: 1px solid #c9d5ed;
+            background: #fff;
+            color: #32456e;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform .12s ease, background .15s ease, border-color .15s ease;
+            user-select: none;
+        }
+
+        .icon-btn:hover {
+            transform: translateY(-1px);
+            border-color: #84a7ff;
+            background: #eef4ff;
+        }
+
+        .panel-bd {
+            padding: 12px 14px 14px;
+        }
+
+        .row { margin-bottom: 10px; }
+
+        .row.inline-3 {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 150px;
+            gap: 10px;
+            align-items: end;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #2d3a58;
+            margin-bottom: 6px;
+        }
+
+        input,
+        textarea,
+        button {
+            font-family: inherit;
+            width: 100%;
+        }
+
+        input,
+        textarea {
+            border: 1px solid #cbd7ef;
+            border-radius: 12px;
+            padding: 10px 11px;
+            font-size: 14px;
+            background: #fff;
+            color: var(--text);
+            transition: border-color .16s ease, box-shadow .16s ease;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-2);
+            box-shadow: 0 0 0 3px rgba(21, 94, 239, 0.12);
+        }
+
+        .main-action {
+            margin-top: 2px;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 11px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            background: var(--accent-2);
+            cursor: pointer;
+            transition: transform .12s ease, filter .14s ease;
+        }
+
+        .main-action:hover { filter: brightness(1.06); }
+        .main-action:active { transform: translateY(1px); }
+
+        .run-btns { margin-top: 8px; }
+
+        .run-btn {
+            border: none;
+            padding: 10px 11px;
+            border-radius: 11px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .run-current { background: var(--accent); }
+
+        ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 6px;
+            max-height: calc(100vh - 230px);
+            overflow: auto;
+        }
+
+        li {
+            border: 1px solid #dde5f4;
+            border-radius: 11px;
+            background: #fff;
+            padding: 9px 11px;
+            cursor: pointer;
+            transition: all .14s ease;
+        }
+
+        li:hover {
+            border-color: #aac3ff;
+            transform: translateX(2px);
+        }
+
+        li.active {
+            border-color: #6f9bff;
+            background: #eaf1ff;
+        }
+
+        .script-name {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e2d50;
+        }
+
+        .script-meta {
+            display: block;
+            margin-top: 3px;
+            font-size: 12px;
+            color: #73809d;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .editor-wrap {
+            border: 1px solid #22324f;
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--code-bg);
+        }
+
+        .editor-toolbar {
+            padding: 7px 11px;
+            font-size: 12px;
+            color: #9db4e8;
+            border-bottom: 1px solid #25324b;
+            background: #121d33;
+        }
+
+        .editor-main {
+            display: grid;
+            grid-template-columns: 52px 1fr;
+            min-height: 300px;
+            max-height: 420px;
+            overflow: hidden;
+        }
+
+        .line-nos {
+            margin: 0;
+            padding: 10px 8px 10px 0;
+            text-align: right;
+            color: #5e739e;
+            background: var(--code-line);
+            border-right: 1px solid #273856;
+            font: 13px/1.5 var(--mono);
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .code-editor {
+            border: none;
+            border-radius: 0;
+            margin: 0;
+            min-height: 300px;
+            max-height: 420px;
+            resize: vertical;
+            background: var(--code-bg);
+            color: var(--code-text);
+            font: 13px/1.5 var(--mono);
+            padding: 10px 12px;
+            white-space: pre;
+            overflow: auto;
+            tab-size: 2;
+        }
+
+        .json-editor {
+            min-height: 96px;
+            resize: none;
+            overflow: hidden;
+            font: 13px/1.45 var(--mono);
+            background: #f8fbff;
+        }
+
+        .json-actions {
+            margin-top: 6px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tiny-btn {
+            width: auto;
+            border: 1px solid #c9d5ed;
+            background: #fff;
+            color: #31466f;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .json-state {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #496291;
+        }
+
+        .json-state.ok { color: var(--ok); }
+        .json-state.warn { color: var(--warn); }
+
+        .result {
+            margin-top: 10px;
+            border: 1px solid #d8e0ef;
+            border-radius: 12px;
+            padding: 10px;
+            background: #fbfdff;
+        }
+
+        .result h4 {
+            margin: 0 0 6px;
+            font-size: 13px;
+            color: #44506d;
+        }
+
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            border-radius: 10px;
+            padding: 10px;
+            background: #0e1830;
+            color: #e1ebff;
+            font: 12px/1.45 var(--mono);
+        }
+
+        .bottom-actions {
+            margin-top: 10px;
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        .fade-in { animation: fade-in 260ms ease; }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slide-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 980px) {
+            .layout { grid-template-columns: 1fr; }
+            ul { max-height: 260px; }
+            .row.inline-3 { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <h2>Groovy 脚本平台（脚本 CRUD + 执行）</h2>
-    <div class="grid">
-        <div class="panel">
-            <h3>脚本列表</h3>
-            <button class="secondary" onclick="loadScripts()">刷新</button>
-            <ul id="scriptList"></ul>
+<div class="shell">
+    <div class="header">
+        <div>
+            <h1 class="title">Groovy Script Studio</h1>
+            <p class="subtitle">脚本管理 + 执行控制台（参数文本支持 JSON 识别）</p>
         </div>
+    </div>
 
-        <div class="panel">
-            <label>脚本ID（编辑/删除/执行时使用）</label>
-            <input id="scriptId" placeholder="例如 1" />
-
-            <label>名称</label>
-            <input id="name" />
-
-            <label>描述</label>
-            <input id="description" />
-
-            <label>Groovy 脚本内容</label>
-            <textarea id="content">println "Hello, ${args.join(', ')}"</textarea>
-
-            <div class="btn-row">
-                <button onclick="createScript()">新增</button>
-                <button onclick="updateScript()">更新</button>
+    <div class="layout">
+        <section class="panel fade-in">
+            <div class="panel-hd">
+                <h3>脚本列表</h3>
+                <div class="icon-actions">
+                    <button class="icon-btn" title="刷新" onclick="loadScripts()">&#x21bb;</button>
+                    <button class="icon-btn" title="新增脚本" onclick="startCreateMode()">+</button>
+                </div>
             </div>
-            <button class="danger" onclick="deleteScript()">删除</button>
-
-            <label>执行参数（空格分隔）</label>
-            <input id="args" value="Alice Bob" />
-            <label>超时（秒）</label>
-            <input id="timeout" type="number" value="10" min="1" max="120" />
-            <div class="btn-row">
-                <button onclick="executeContent()">执行当前内容</button>
-                <button class="secondary" onclick="executeById()">按ID执行</button>
+            <div class="panel-bd">
+                <ul id="scriptList"></ul>
             </div>
+        </section>
 
-            <h4>stdout</h4>
-            <pre id="stdout"></pre>
-            <h4>stderr</h4>
-            <pre id="stderr"></pre>
-            <h4>meta</h4>
-            <pre id="meta"></pre>
-        </div>
+        <section class="panel fade-in">
+            <div class="panel-hd">
+                <h3 id="editorTitle">新增脚本</h3>
+            </div>
+            <div class="panel-bd">
+                <div class="row inline-3">
+                    <div>
+                        <label for="name">名称</label>
+                        <input id="name" placeholder="例如：hello-world" />
+                    </div>
+                    <div>
+                        <label for="description">描述</label>
+                        <input id="description" placeholder="脚本用途说明" />
+                    </div>
+                    <div>
+                        <label for="timeoutMs">超时（ms）</label>
+                        <input id="timeoutMs" type="number" value="10000" min="1" max="120000" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <label>Groovy 脚本内容</label>
+                    <div class="editor-wrap">
+                        <div class="editor-toolbar">Groovy</div>
+                        <div class="editor-main">
+                            <pre id="lineNos" class="line-nos">1</pre>
+                            <textarea id="content" class="code-editor" spellcheck="false">println "Hello, ${args.join(', ')}"</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <label for="argsText">执行参数</label>
+                    <textarea id="argsText" class="json-editor" spellcheck="false">["Alice", "Bob"]</textarea>
+                    <div class="json-actions">
+                        <button class="tiny-btn" onclick="formatArgsText()">JSON 格式化</button>
+                        <button class="tiny-btn" onclick="restoreArgsText()">还原</button>
+                    </div>
+                    <div id="argsFormatState" class="json-state">识别格式：List/Array</div>
+                </div>
+
+                <div class="run-btns">
+                    <button class="run-btn run-current" onclick="executeContent()">执行脚本</button>
+                </div>
+
+                <div class="result">
+                    <h4>stdout</h4>
+                    <pre id="stdout"></pre>
+                    <h4 style="margin-top: 8px;">stderr</h4>
+                    <pre id="stderr"></pre>
+                    <h4 style="margin-top: 8px;">meta</h4>
+                    <pre id="meta"></pre>
+                </div>
+
+                <div class="bottom-actions">
+                    <button id="mainActionBtn" class="main-action" onclick="saveScript()">新增</button>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
 
 <script>
 let currentId = null;
+let argsOriginalText = '';
 
-function getArgs() {
-    const text = document.getElementById('args').value.trim();
-    return text ? text.split(/\s+/) : [];
+function updateLineNos() {
+    const editor = document.getElementById('content');
+    const lineNos = document.getElementById('lineNos');
+    const lines = editor.value.split('\n').length;
+    let text = '';
+    for (let i = 1; i <= lines; i += 1) {
+        text += i + (i === lines ? '' : '\n');
+    }
+    lineNos.textContent = text;
+    lineNos.scrollTop = editor.scrollTop;
+}
+
+function bindCodeEditorBehavior() {
+    const editor = document.getElementById('content');
+    editor.addEventListener('input', updateLineNos);
+    editor.addEventListener('scroll', updateLineNos);
+    editor.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            editor.value = editor.value.slice(0, start) + '  ' + editor.value.slice(end);
+            editor.selectionStart = editor.selectionEnd = start + 2;
+            updateLineNos();
+        }
+    });
+    updateLineNos();
+}
+
+function showError(message) {
+    document.getElementById('stderr').textContent = message;
+}
+
+function classifyArgsText(rawText) {
+    const state = document.getElementById('argsFormatState');
+    const text = rawText || '';
+    const trimmed = text.trim();
+
+    if (!trimmed) {
+        state.textContent = '识别格式：空文本（按空参数处理）';
+        state.className = 'json-state warn';
+        return { type: 'empty', value: [] };
+    }
+
+    try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+            state.textContent = '识别格式：List/Array';
+            state.className = 'json-state ok';
+            return { type: 'list-array', value: parsed };
+        }
+        if (parsed !== null && typeof parsed === 'object') {
+            state.textContent = '识别格式：JSON Object (Map)';
+            state.className = 'json-state ok';
+            return { type: 'json-object', value: parsed };
+        }
+        state.textContent = '识别格式：JSON Primitive';
+        state.className = 'json-state ok';
+        return { type: 'json-primitive', value: parsed };
+    } catch (_) {
+        state.textContent = '识别格式：纯文本';
+        state.className = 'json-state warn';
+        return { type: 'text', value: text };
+    }
+}
+
+function buildArgsPayload() {
+    const raw = document.getElementById('argsText').value;
+    const classified = classifyArgsText(raw);
+
+    if (classified.type === 'empty') {
+        return { args: [], argsContext: [] };
+    }
+    if (classified.type === 'list-array') {
+        const args = classified.value.map((item) => {
+            if (typeof item === 'string') {
+                return item;
+            }
+            return JSON.stringify(item);
+        });
+        return { args, argsContext: classified.value };
+    }
+    if (classified.type === 'json-object' || classified.type === 'json-primitive') {
+        return { args: [JSON.stringify(classified.value)], argsContext: classified.value };
+    }
+    return { args: [String(classified.value)], argsContext: String(classified.value) };
+}
+
+function formatArgsText() {
+    const el = document.getElementById('argsText');
+    argsOriginalText = el.value;
+    try {
+        const parsed = JSON.parse(el.value.trim());
+        el.value = JSON.stringify(parsed, null, 2);
+    } catch (_) {
+        // non-json no-op by design
+    }
+    classifyArgsText(el.value);
+    adjustArgsTextHeight();
+}
+
+function restoreArgsText() {
+    if (!argsOriginalText) {
+        return;
+    }
+    const el = document.getElementById('argsText');
+    el.value = argsOriginalText;
+    classifyArgsText(el.value);
+    adjustArgsTextHeight();
+}
+
+function getTimeoutSecondsFromMs() {
+    const raw = Number(document.getElementById('timeoutMs').value || 10000);
+    const boundedMs = Math.min(120000, Math.max(1, raw));
+    if (boundedMs !== raw) {
+        document.getElementById('timeoutMs').value = boundedMs;
+    }
+    return Math.max(1, Math.ceil(boundedMs / 1000));
+}
+
+function setEditorMode() {
+    const title = document.getElementById('editorTitle');
+    const mainBtn = document.getElementById('mainActionBtn');
+
+    if (currentId == null) {
+        title.textContent = '新增脚本';
+        mainBtn.textContent = '新增';
+    } else {
+        title.textContent = `编辑与执行脚本（ID：${currentId}）`;
+        mainBtn.textContent = '更新';
+    }
+}
+
+function resetResult() {
+    document.getElementById('stdout').textContent = '';
+    document.getElementById('stderr').textContent = '';
+    document.getElementById('meta').textContent = '';
+}
+
+function adjustArgsTextHeight() {
+    const el = document.getElementById('argsText');
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(96, el.scrollHeight)}px`;
+}
+
+function startCreateMode() {
+    currentId = null;
+    document.getElementById('name').value = '';
+    document.getElementById('description').value = '';
+    document.getElementById('content').value = 'println "Hello, ${args.join(\', \')}"';
+    document.getElementById('timeoutMs').value = 10000;
+    document.getElementById('argsText').value = '[]';
+    argsOriginalText = '';
+    setEditorMode();
+    updateLineNos();
+    classifyArgsText(document.getElementById('argsText').value);
+    adjustArgsTextHeight();
+    resetResult();
+    loadScripts();
+}
+
+async function parseResponse(res) {
+    const data = await res.json();
+    if (!res.ok) {
+        throw new Error(data.detail || `请求失败：HTTP ${res.status}`);
+    }
+    return data;
 }
 
 async function loadScripts() {
-    const res = await fetch('/api/scripts');
-    const data = await res.json();
-    const list = document.getElementById('scriptList');
-    list.innerHTML = '';
-    for (const item of data) {
-        const li = document.createElement('li');
-        li.textContent = `#${item.id} ${item.name}`;
-        li.onclick = () => fillForm(item);
-        if (currentId === item.id) li.classList.add('active');
-        list.appendChild(li);
+    try {
+        const res = await fetch('/api/scripts');
+        const data = await parseResponse(res);
+        const list = document.getElementById('scriptList');
+        list.innerHTML = '';
+
+        data.forEach((item) => {
+            const li = document.createElement('li');
+            li.className = currentId === item.id ? 'active' : '';
+            li.innerHTML = `<span class="script-name">${item.name || '(未命名)'}</span><span class="script-meta">${item.description || '无描述'}</span>`;
+            li.onclick = () => fillForm(item);
+            list.appendChild(li);
+        });
+    } catch (e) {
+        showError(e.message);
     }
 }
 
 function fillForm(item) {
     currentId = item.id;
-    document.getElementById('scriptId').value = item.id;
     document.getElementById('name').value = item.name || '';
     document.getElementById('description').value = item.description || '';
     document.getElementById('content').value = item.content || '';
+    document.getElementById('argsText').value = item.executeArgsJson && item.executeArgsJson.trim() ? item.executeArgsJson : '[]';
+    argsOriginalText = '';
+
+    setEditorMode();
+    updateLineNos();
+    classifyArgsText(document.getElementById('argsText').value);
+    adjustArgsTextHeight();
     loadScripts();
 }
 
-async function createScript() {
-    await fetch('/api/scripts', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            name: document.getElementById('name').value,
-            description: document.getElementById('description').value,
-            content: document.getElementById('content').value,
-        })
-    });
-    await loadScripts();
+function buildScriptPayload() {
+    return {
+        name: document.getElementById('name').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        content: document.getElementById('content').value,
+        executeArgsJson: document.getElementById('argsText').value
+    };
 }
 
-async function updateScript() {
-    const id = document.getElementById('scriptId').value;
-    await fetch(`/api/scripts/${id}`, {
-        method: 'PUT', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            name: document.getElementById('name').value,
-            description: document.getElementById('description').value,
-            content: document.getElementById('content').value,
-        })
-    });
-    await loadScripts();
-}
+async function saveScript() {
+    try {
+        const payload = buildScriptPayload();
 
-async function deleteScript() {
-    const id = document.getElementById('scriptId').value;
-    await fetch(`/api/scripts/${id}`, { method: 'DELETE' });
-    currentId = null;
-    await loadScripts();
+        if (currentId == null) {
+            const res = await fetch('/api/scripts', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const created = await parseResponse(res);
+            currentId = created.id;
+        } else {
+            if (!window.confirm(`确认更新脚本（ID：${currentId}）吗？`)) {
+                return;
+            }
+            const res = await fetch(`/api/scripts/${currentId}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            await parseResponse(res);
+        }
+
+        setEditorMode();
+        await loadScripts();
+    } catch (e) {
+        showError(e.message);
+    }
 }
 
 function showResult(data) {
@@ -142,29 +717,32 @@ function showResult(data) {
 }
 
 async function executeContent() {
-    const res = await fetch('/api/execute', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            script: document.getElementById('content').value,
-            args: getArgs(),
-            timeoutSeconds: Number(document.getElementById('timeout').value || 10),
-        })
-    });
-    showResult(await res.json());
+    try {
+        const argsPayload = buildArgsPayload();
+        const res = await fetch('/api/execute', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                script: document.getElementById('content').value,
+                args: argsPayload.args,
+                argsContext: argsPayload.argsContext,
+                timeoutSeconds: getTimeoutSecondsFromMs()
+            })
+        });
+        showResult(await parseResponse(res));
+    } catch (e) {
+        showError(e.message);
+    }
 }
 
-async function executeById() {
-    const id = document.getElementById('scriptId').value;
-    const res = await fetch(`/api/scripts/${id}/execute`, {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            args: getArgs(),
-            timeoutSeconds: Number(document.getElementById('timeout').value || 10),
-        })
-    });
-    showResult(await res.json());
-}
-
+bindCodeEditorBehavior();
+document.getElementById('argsText').addEventListener('input', (e) => {
+    classifyArgsText(e.target.value);
+    adjustArgsTextHeight();
+});
+setEditorMode();
+classifyArgsText(document.getElementById('argsText').value);
+adjustArgsTextHeight();
 loadScripts();
 </script>
 </body>

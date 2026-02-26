@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -50,15 +51,17 @@ class GroovyScriptControllerTest {
         script.setId(2L);
         script.setName("n1");
         script.setContent("println 1");
+        script.setExecuteArgsJson("[\"A\"]");
         when(groovyScriptService.create(org.mockito.ArgumentMatchers.any())).thenReturn(script);
 
         mockMvc.perform(post("/api/scripts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"n1","description":"d","content":"println 1"}
+                                {"name":"n1","description":"d","content":"println 1","executeArgsJson":"[\\"A\\"]"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(2));
+                .andExpect(jsonPath("$.id").value(2))
+                .andExpect(jsonPath("$.executeArgsJson").value("[\"A\"]"));
     }
 
     @Test
@@ -67,7 +70,7 @@ class GroovyScriptControllerTest {
         script.setId(1L);
         script.setContent("println 'ok'");
         when(groovyScriptService.get(1L)).thenReturn(script);
-        when(groovyExecutionService.execute(eq("println 'ok'"), eq(List.of("A")), eq(8)))
+        when(groovyExecutionService.execute(eq("println 'ok'"), eq(List.of("A")), eq(8), any()))
                 .thenReturn(new ExecuteResponse(0, "ok\n", "", false));
 
         mockMvc.perform(post("/api/scripts/1/execute")
@@ -78,5 +81,26 @@ class GroovyScriptControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.exitCode").value(0))
                 .andExpect(jsonPath("$.stdout").value("ok\n"));
+    }
+
+    @Test
+    void shouldExecuteScriptBySavedArgsWhenRequestArgsAbsent() throws Exception {
+        GroovyScript script = new GroovyScript();
+        script.setId(3L);
+        script.setContent("println args.join(',')");
+        script.setExecuteArgsJson("[\"X\",\"Y\"]");
+
+        when(groovyScriptService.get(3L)).thenReturn(script);
+        when(groovyScriptService.parseSavedArgs(script))
+                .thenReturn(new GroovyScriptService.ParsedArgs(List.of("X", "Y"), List.of("X", "Y")));
+        when(groovyExecutionService.execute(eq("println args.join(',')"), eq(List.of("X", "Y")), eq(10), any()))
+                .thenReturn(new ExecuteResponse(0, "X,Y\n", "", false));
+
+        mockMvc.perform(post("/api/scripts/3/execute")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.exitCode").value(0))
+                .andExpect(jsonPath("$.stdout").value("X,Y\n"));
     }
 }

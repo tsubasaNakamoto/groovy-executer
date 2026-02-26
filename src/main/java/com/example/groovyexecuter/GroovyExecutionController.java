@@ -17,10 +17,12 @@ public class GroovyExecutionController {
 
     @PostMapping("/execute")
     public ExecuteResponse execute(@Valid @RequestBody ExecuteRequest request) {
+        Object argsContext = request.getArgsContext() == null ? request.getArgs() : request.getArgsContext();
         return groovyExecutionService.execute(
                 request.getScript(),
                 request.getArgs(),
-                request.getTimeoutSeconds()
+                request.getTimeoutSeconds(),
+                argsContext
         );
     }
 }

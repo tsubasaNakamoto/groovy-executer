@@ -7,6 +7,7 @@ public class GroovyScript {
     private String name;
     private String description;
     private String content;
+    private String executeArgsJson;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -40,6 +41,14 @@ public class GroovyScript {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getExecuteArgsJson() {
+        return executeArgsJson;
+    }
+
+    public void setExecuteArgsJson(String executeArgsJson) {
+        this.executeArgsJson = executeArgsJson;
     }
 
     public LocalDateTime getCreatedAt() {

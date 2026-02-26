@@ -11,6 +11,7 @@ public class ScriptUpsertRequest {
     private String description;
     @NotBlank
     private String content;
+    private String executeArgsJson;
 
     public String getName() {
         return name;
@@ -34,5 +35,13 @@ public class ScriptUpsertRequest {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getExecuteArgsJson() {
+        return executeArgsJson;
+    }
+
+    public void setExecuteArgsJson(String executeArgsJson) {
+        this.executeArgsJson = executeArgsJson;
     }
 }

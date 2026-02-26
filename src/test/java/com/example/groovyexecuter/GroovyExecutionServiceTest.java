@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class GroovyExecutionServiceTest {
 
-    private final GroovyExecutionService service = new GroovyExecutionService();
+    private final GroovyExecutionService service = new GroovyExecutionService(new com.fasterxml.jackson.databind.ObjectMapper());
 
     @Test
     void shouldExecuteScriptInJvm() {
@@ -31,5 +31,29 @@ class GroovyExecutionServiceTest {
         ExecuteResponse response = service.execute("while(true){}", List.of(), 1);
         assertEquals(-1, response.getExitCode());
         assertTrue(response.isTimedOut());
+    }
+
+    @Test
+    void shouldPrintJsonStringWhenContextListContainsObject() {
+        ExecuteResponse response = service.execute(
+                "println context.get(0)",
+                List.of("{\"Alice\":12}"),
+                5,
+                List.of(java.util.Map.of("Alice", 12))
+        );
+        assertEquals(0, response.getExitCode());
+        assertTrue(response.getStdout().contains("{\"Alice\":12}"));
+    }
+
+    @Test
+    void shouldSupportChainedGetForContextListMap() {
+        ExecuteResponse response = service.execute(
+                "println context.get(0).get(\"Alice\")",
+                List.of("{\"Alice\":12}"),
+                5,
+                List.of(java.util.Map.of("Alice", 12))
+        );
+        assertEquals(0, response.getExitCode());
+        assertTrue(response.getStdout().contains("12"));
     }
 }

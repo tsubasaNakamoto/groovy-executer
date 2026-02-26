@@ -1,6 +1,5 @@
 package com.example.groovyexecuter.script;
 
-import com.example.groovyexecuter.ExecuteRequest;
 import com.example.groovyexecuter.ExecuteResponse;
 import com.example.groovyexecuter.GroovyExecutionService;
 import jakarta.validation.Valid;
@@ -46,10 +45,23 @@ public class GroovyScriptController {
     }
 
     @PostMapping("/{id}/execute")
-    public ExecuteResponse executeById(@PathVariable Long id, @RequestBody(required = false) ExecuteRequest request) {
+    public ExecuteResponse executeById(@PathVariable Long id, @Valid @RequestBody(required = false) ScriptExecuteRequest request) {
         GroovyScript script = groovyScriptService.get(id);
-        List<String> args = request == null || request.getArgs() == null ? List.of() : request.getArgs();
-        int timeoutSeconds = request == null || request.getTimeoutSeconds() == null ? 10 : request.getTimeoutSeconds();
-        return groovyExecutionService.execute(script.getContent(), args, timeoutSeconds);
+        Object argsContext;
+        List<String> args;
+        if (request == null || (request.getArgs() == null && request.getArgsContext() == null)) {
+            GroovyScriptService.ParsedArgs parsedArgs = groovyScriptService.parseSavedArgs(script);
+            args = parsedArgs.args();
+            argsContext = parsedArgs.context();
+        } else {
+            argsContext = request.getArgsContext() == null ? request.getArgs() : request.getArgsContext();
+            args = request.getArgs() == null
+                    ? groovyScriptService.toArgsFromContext(argsContext)
+                    : request.getArgs();
+        }
+        int timeoutSeconds = request == null || request.getTimeoutSeconds() == null
+                ? 10
+                : request.getTimeoutSeconds();
+        return groovyExecutionService.execute(script.getContent(), args, timeoutSeconds, argsContext);
     }
 }
